@@ -1,0 +1,16 @@
+
+T_list: [.4, .8, 1.6, 3.2, 6.4, 12.8 ]
+#T_list: [ 1.75, 2, 2.25, 2.5, 2.75]
+#H_list: [ -.1, -.05, 0, .05, .1]
+length_list: [3, 5, 7]
+
+sim_type: Heat Bath # Heat Bath, Metropolis
+n_steps: 10000
+length: 10 #in number of particles
+T: 2     #temperature
+seed: 4100342352
+
+J: 1    #coupling of spins
+H: 0    #Field strength
+
+

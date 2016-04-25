@@ -1,0 +1,18 @@
+T_list: [1.5, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5]
+#T_list: [1.5, 1.75, 2]
+#L_list: [20]
+
+graph_type: ["|M|", E] #E, M, |M|, C, X 
+seed: 4111 #Used to seed random number generator
+
+param1: T #the parameter on the bottom of the graph (Only step or T as of now)
+param2: L  #the parametere in the legend
+
+# System inputs
+sys_params:
+    sim_type: "Heat Bath" # Heat Bath, Metropolis
+    n_steps: 100000
+    L: 25    #in number of particles
+    T: 2     #temperature
+    J: 1    #coupling of spins
+    H: 0    #Field strength
