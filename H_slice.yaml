@@ -1,0 +1,21 @@
+#H_list: [-.1, -.075, -.05, -.025, 0, .025, .05, .075, .1]
+#H_list: [-.3, -.2, -.1, 0, .1, .2, .3, ]
+H_list: [-.5, .5]
+#L_list: [5, 8, 10]
+#seed_list: [4110, 4111, 4112]
+
+graph_type: [M, E] #E, M, |M|, C, X 
+
+param1: H #the parameter on the bottom of the graph (Only step or T as of now)
+param2: seed #the parametere in the legend
+
+# System inputs
+sys_params:
+    seed: 4114 #Used to seed random number generator
+    sim_type: "Heat Bath" # Heat Bath, Metropolis
+    n_steps: 4000000
+    n_bins: 100
+    L: 10    #in number of particles
+    T: 2     #temperature
+    J: 1    #coupling of spins
+    H: 0    #Field strength

@@ -1,5 +1,4 @@
-#T_list: [1.75, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.75, 3]
-T_list: [1.5, 3.5]
+#T_list: [1.5, 3.5]
 L_list: [20]
 
 graph_type: ["|M|", C, X] #E, M, |M|, C, X 
@@ -7,17 +6,17 @@ graph_type: ["|M|", C, X] #E, M, |M|, C, X
 
 seed: 4111 #Used to seed random number generator
 
-param1: T #the parameter on the bottom of the graph (Only step or T as of now)
-param2: L  #the parametere in the legend
+param1: step #the parameter on the bottom of the graph (Only step or T as of now)
+param2: T  #the parametere in the legend
 
 
 # System inputs
 sys_params:
     seed: 4111 #Used to seed random number generator
     sim_type: "Metropolis" # Heat Bath, Metropolis
-    n_steps: 4000000
-    n_bins: 100 #how a run is binned for statistics
-    L: 12    #in number of particles
-    T: 2     #temperature
+    n_steps: 4000
+    n_bins: 10 #how a run is binned for statistics
+    L: 10    #in number of particles
+    T: 1     #temperature
     J: 1    #coupling of spins
     H: 0    #Field strength

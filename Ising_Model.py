@@ -17,19 +17,33 @@ Ouputs: Graphs/txt files with various thermodynamic properties
 
 '''
 
+def GetStats(arr, bins):
+    mean_array = []
+    std_array = []
+    var_array = []
+    n_steps = int(floor(len(arr)/bins))
+
+    for i in range(1,bins):
+        mean_array.append(np.mean(arr[i*n_steps:((i+1)*n_steps-1)]))
+        var_array.append(np.var(arr[i*n_steps:((i+1)*n_steps-1)]))
+
+    mean = np.mean(mean_array)
+    mean_var = np.var(mean_array)
+    var = np.mean(var_array)
+    var_var = np.var(var_array)
+
+    return mean, mean_var, var, var_var
+
+
 class IsingModelEnsemble:
     def __init__(self, param_path):
         self.param_path =param_path
 
         with open(param_path) as f:
             self.params = yaml.load(f)
-        self.T_list = self.params["T_list"]
-        # self.H_list = self.params["H_list"]
-        # self.L_list = self.params["L_list"]
-        self.graph_dict = {}
 
     def RunSystem(self, model):
-        # if self.params["param1"] == "T": model.Equilibriate()
+        # if self.params["param1"] != 'step' : model.Equilibriate()
 
         alg = self.params["sys_params"]["sim_type"]
         if alg == "Heat Bath":
@@ -40,24 +54,28 @@ class IsingModelEnsemble:
             print "Did you check your spelling of the algorithms?"
         return
 
-    def GraphvsParam(self):
-        print "Not implemented yet"
 
     #Graphs changes in a thermodynamic variable(s) (graph_type) with respect to time(step)
     #Multiple values of a parameter (param2) can be given to get multiple graphs
     def Graph(self):
-        var = self.params["param2"]
-        orig = float(self.params["sys_params"][var])
-        Torig = float(self.params["sys_params"]["T"])
+        P1 = self.params["param1"]
+        P2 = self.params["param2"]
+        if P1 != "step":
+            P1_list = self.params[P1+"_list"]
+            if len(P1_list) == 2:
+                temp = np.linspace(P1_list[0], P1_list[1], 50)
+                P1_list = temp
+        P2orig = float(self.params["sys_params"][P2])
+
 
         #Determine whether this is a multivalue run or not
-        if var+"_list" not in self.params.keys():
-            var_list = [orig]
+        if P2+"_list" not in self.params.keys():
+            P2_list = [P2orig]
             # colors = [(0,0,1)]
             colors = ['b']
         else:
-            var_list = self.params[var+"_list"]
-            colors = mpl.cm.rainbow(np.linspace(0,1,len(var_list)))
+            P2_list = self.params[P2+"_list"]
+            colors = mpl.cm.rainbow(np.linspace(0,1,len(P2_list)))
 
         #Number of graph types
         n_graph = len(self.params["graph_type"])
@@ -69,32 +87,31 @@ class IsingModelEnsemble:
         IM_list = []
 
         #Run Ising Models with different values of param2
-        for v in var_list:
-            self.params["sys_params"][var] = v 
-            #Make a 2D array if you are running it with temperature
-            if self.params["param1"] == "T":
-                IM_Tlist = []
-                for T in self.T_list:
-                    self.params["sys_params"]["T"] = T
-                    IM_Tlist.append(IsingModel(self.params))
-                    self.RunSystem(IM_Tlist[-1])
-                IM_list.append(IM_Tlist)
-            else:
+        for val2 in P2_list:
+            self.params["sys_params"][P2] = val2 
+            if self.params["param1"] == "step":
+                print 'check'
                 IM_list.append(IsingModel(self.params))
                 self.RunSystem(IM_list[-1])
+            #Make a 2D array if you are running it with anything but step
+            else:
+                IM_Plist = []
+                for val1 in P1_list:
+                    self.params["sys_params"][P1] = val1
+                    IM_Plist.append(IsingModel(self.params))
+                    self.RunSystem(IM_Plist[-1])
+                IM_list.append(IM_Plist)
         
         #loop through subfigs for each graph type wanted
         for ax, gt in zip(axarr, self.params["graph_type"]):
             #Make plots on each subfig 
             if self.params['param1'] == 'step':
-                self.GraphVsTime( ax, IM_list, colors, gt, var_list, var)
-            elif self.params['param1'] == 'T':
-                self.GraphVsTemp( ax, IM_list, colors, gt, var_list, var)
+                self.GraphVsTime( ax, IM_list, colors, gt, P2_list, P2)
             else:
-                print "param1 must be either T or step"
+                self.GraphVsParam( ax, IM_list, colors, gt, P1_list, P1, P2_list, P2)
         
-        self.params["sys_params"][var] = orig
-        self.params["sys_params"]["T"] = Torig
+        # self.params["sys_params"][P1] = P1orig
+        # self.params["sys_params"][P2] = P2orig
         return
         
     def GraphVsTime(self, ax, IM_list, colors, gt, var_list, var):
@@ -109,19 +126,22 @@ class IsingModelEnsemble:
         ax.legend(loc='center left', bbox_to_anchor=(1,.5))
         return
 
-    def GraphVsTemp(self, ax, IM_list, colors, gt, var_list, var):
-        for IM_Tlist, color, v in zip(IM_list, colors, var_list):
+    def GraphVsParam(self, ax, IM_list, colors, gt, P1_list, P1, P2_list, P2):
+        for IM_Plist, color, val2 in zip(IM_list, colors, P2_list):
             y_array=[]
-            for m in IM_Tlist:
-                y_array.append(self.GetValAvg(m, gt))  
+            for m in IM_Plist:
+                y_array.append(self.GetValStat(m, gt))  
 
-            ax.plot(self.T_list, y_array, color=color, marker='o', label = '{0} = {1}'.format(var, v)) 
-        ax.set_title("{} vs Temperature".format(gt))
-        ax.set_xlabel("T")
-        ax.set_ylabel("{} / {}_max ".format(gt,gt))
+            a = np.asarray(y_array)
+            ax.errorbar(P1_list, a[:,0], yerr=np.sqrt(a[:,1]), color=color, marker='o', label = '{0} = {1}'.format(P2, val2)) 
+        ax.set_title("{} vs {}".format(gt, P1))
+        ax.set_xlabel(P1)
+        if gt == 'C' or gt == 'X':
+            ax.set_ylabel("{} / V ".format(gt))
+        else:
+            ax.set_ylabel("{} / {}_max ".format(gt,gt))
         ax.legend(loc='center left', bbox_to_anchor=(1,.5))
         return
-
 
     def ShowPlots(self):
         #Make title
@@ -147,12 +167,12 @@ class IsingModelEnsemble:
             return model.M_array
         elif Val == '|M|':
             return np.absolute(model.M_array)
-        elif Val == 'C':
-            return model.C_array
-        elif Val == 'X':
-            return model.S_array
+        # elif Val == 'C':
+            # return model.C_array
+        # elif Val == 'X':
+            # return model.S_array
 
-    def GetValAvg(self, model, Val):
+    def GetValStat(self, model, Val):
         if Val == 'E':
             return model.GetAvgEnergy()
         elif Val == 'M':
@@ -177,7 +197,7 @@ class IsingModel:
         else:
             print "Need either a list or a dictionary of parameters"
 
-        self.seed = self.params["seed"]
+        self.seed = int(self.params['sys_params']["seed"])
         np.random.seed(self.seed)
         
         #Get variables used in algorithm
@@ -187,12 +207,13 @@ class IsingModel:
         self.L = int(self.params["sys_params"]["L"])
         self.V = float(self.L*self.L)
         self.step_array = range(self.params["sys_params"]["n_steps"]) #Array of all steps
+        self.bins = self.params["sys_params"]["n_bins"]
 
         #Create empty lists for data output
         self.M_array = [] #Magnetization at every step
         self.E_array = [] #Energy at every step
-        self.C_array = [] #Specific Heat at every step
-        self.X_array = [] #Susceptibility at every step
+        # self.C_array = [] #Specific Heat at every step
+        # self.X_array = [] #Susceptibility at every step
         
         #Initialize system with random orientations of spin
         self.system = self.GenerateRandomMatrix(self.L)
@@ -207,11 +228,14 @@ class IsingModel:
         for i_step in self.step_array:
            i, j = self.ChooseRandomParticle() 
            self.ThermalizeParticleHB(i, j)
-           self.M_array.append(self.GetMagnetization())
-           self.E_array.append(self.GetTotalEnergy())
+
+           # self.M_array.append(self.GetMagnetization())
+           # self.E_array.append(self.GetTotalEnergy())
 
         print self.GetAvgEnergy()
         print self.GetAvgMag()
+        print self.GetAvgC()
+        print self.GetAvgX()
         return
 
 
@@ -219,11 +243,14 @@ class IsingModel:
         for i_step in self.step_array:
            i, j = self.ChooseRandomParticle() 
            self.ThermalizeParticleMet(i, j)
-           self.M_array.append(self.GetMagnetization())
-           self.E_array.append(self.GetTotalEnergy())
+
+           # self.M_array.append(self.GetMagnetization())
+           # self.E_array.append(self.GetTotalEnergy())
 
         print self.GetAvgEnergy()
         print self.GetAvgMag()
+        print self.GetAvgC()
+        print self.GetAvgX()
         return
 
     def RunCluster(self):
@@ -240,16 +267,24 @@ class IsingModel:
 
         if (P > r):
             self.system[i,j] = 1
+            self.SetTotalEnergy()
+            self.SetMagnetization()
         else:
             self.system[i,j] = -1
-
+            self.SetTotalEnergy()
+            self.SetMagnetization()
         return
 
     def ThermalizeParticleMet(self, i, j):
-        p = self.ProbFlip(i, j)
+        p, E = self.ProbFlip(i, j)
 
         if ( p == 1 or p > np.random.ranf()):
             self.system[i,j] *= -1
+            self.SetTotalEnergy(E)
+            self.SetMagnetization(self.system[i,j])
+        else:
+            self.SetTotalEnergy(0)
+            self.SetMagnetization(0)
 
         return
 
@@ -261,8 +296,8 @@ class IsingModel:
         return M
 
     def ChooseRandomParticle(self):
-        i = np.random.randint(0, self.L)
-        j = np.random.randint(0, self.L)
+        i = np.random.randint(self.L)
+        j = np.random.randint(self.L)
         return i, j
 
     #Probability calculating algorithms
@@ -274,10 +309,9 @@ class IsingModel:
         E_c = self.GetParticleEnergy(i, j)
         E_f = -E_c
         if (E_f-E_c) < 0:
-            return 1
+            return 1, E_f
         else:
-            return np.exp(-(E_f-E_c)*self.beta)
-        
+            return np.exp(-(E_f-E_c)*self.beta), E_f
 
     # We are going to assume periodic boundary conditions
     def GetParticleEnergy(self, i, j, s=0):
@@ -306,32 +340,56 @@ class IsingModel:
     def PrintSystem(self):
         print self.system
 
+    #Can make this more efficient
     def GetMagnetization(self):
-        self.M = np.sum(self.system)
-        return self.M/self.V
+        return self.M_array[-1]
 
+    #Can make this more efficient
     def GetTotalEnergy(self):
-        E = 0.0
-        for i in range(self.L):
-            for j in range(self.L):
-                E += self.GetParticleEnergy(i, j)
+        return self.E_array[-1]
+        # E = 0.0
+        # for i in range(self.L):
+            # for j in range(self.L):
+                # E += self.GetParticleEnergy(i, j)
+     
+    def SetTotalEnergy(self, E=None):
+        if self.E_array == [] or E==None:
+            E = 0.0
+            for i in range(self.L):
+                for j in range(self.L):
+                    E += self.GetParticleEnergy(i, j)
+            for i in range(self.L):
+                for j in range(self.L):
+                    E += self.GetParticleEnergy(i, j)
+            self.E_array.append(E/(4*self.V))
+        else:
+            self.E_array.append(self.E_array[-1]+(E/(self.V)))
 
-        return E/(4*self.V)
+    def SetMagnetization(self, s=None):
+        if s == None or self.M_array == []:
+            self.M_array.append(np.sum(self.system)/self.V)
+        else:
+            self.M_array.append((self.M_array[-1])+(2*s/self.V))
     
     def GetAvgEnergy(self):
-        return np.mean(self.E_array)
+        mean, mean_var, var, var_var = GetStats(self.E_array, self.bins)
+        return [mean, mean_var]
     
     def GetAvgAbsMag(self):
-        return np.mean(np.absolute(self.M_array))
+        mean, mean_var, var, var_var = GetStats(np.absolute(self.M_array), self.bins)
+        return [mean, mean_var]
 
     def GetAvgMag(self):
-        return np.mean(self.M_array)
+        mean, mean_var, var, var_var = GetStats(self.M_array, self.bins)
+        return [mean, mean_var]
 
     def GetAvgC(self):
-        return np.mean(self.C_array)
+        mean, mean_var, var, var_var = GetStats(self.E_array, self.bins)
+        return [self.V*var, self.V*var_var]
 
     def GetAvgX(self):
-        return np.mean(self.X_array)
+        mean, mean_var, var, var_var = GetStats(self.M_array, self.bins)
+        return [self.V*self.beta*var, self.V*self.beta*mean_var]
 
 
 if __name__ == "__main__":
